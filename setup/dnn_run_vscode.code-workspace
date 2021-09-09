@@ -5,7 +5,7 @@
 		}
 	],
 	"settings": {
-		"python.pythonPath": "../dnn_small_run/py_env/bin/python3.8"
+		"python.pythonPath": "../Auto_CNN_builder/py_env/bin/python3.8"
 	},
 	"launch": {
 		"version": "0.2.0",
@@ -17,13 +17,6 @@
 				"request": "launch",
 				"program": "dnn_framework.py",
 				"args": ["-mode","skip"],
-				"console": "integratedTerminal"
-			},
-			{
-				"name": "dnn_estimator",
-				"type": "python",
-				"request": "launch",
-				"program": "dnn_estimator.py",
 				"console": "integratedTerminal"
 			}
 		]
