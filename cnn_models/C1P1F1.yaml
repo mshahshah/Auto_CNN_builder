@@ -1,0 +1,507 @@
+# ////////////////////////////////////////////////////////////////////////////////////////
+# Copyright (c) by
+# Company:  IDEA LAB, The University of Texas at Dallas
+# Author :  Masoud Shahshahani
+#
+# Originally Create Date: Mar-5, 2020
+# Project Name    : DNN_Framework
+# Tool Versions   : Python +3
+#
+# Description     : A Conv:Pooling:FC network
+# Dependencies    :
+# Additional Comments:
+#
+# ///////////////////////////////////////////////////////////////////////////////////////
+
+design:
+  data_interface: none #[bram, axi, none]
+  module_controller: none #[hs, axi, none]
+  fc_shared_memory: True
+  dataflow: True
+
+
+  source_files:
+      - top.cpp
+      - top.h
+      - dnn_configs.h
+      - dnn_layers.h
+      - dnn_configs.h
+
+  tb_files:
+      - top_tb.cpp
+      - monitors.h
+      - monitors.cpp
+
+
+design_variable_types:
+  in_t: 16
+  ker_t: 16
+  res_t: 16
+  mid_t: 32
+  cfg_t: 16
+
+
+
+design_layers:
+-
+    type         : IN
+    w_out        : 50
+    lyr_out      : 10
+    padding      : 0
+    data_type    : 16    #a number or auto
+
+-
+    type         : CONV
+    w_ker        : 5
+    stride       : 2
+    lyr_out      : 10
+    padding      : 0
+    data_type    : 16    #a number or auto
+    activation   : relu
+    batch_in     : 1
+    batch_out    : 1
+
+-
+    type         : POOL
+    w_ker        : 2
+    stride       : 2
+    pooling      : max
+    data_type    : 16    #a number or auto
+    batch_in     : 1
+    batch_out    : 1
+
+-
+    type         : FC
+    lyr_out      : 10
+    data_type    : 16    #a number or auto
+    batch_in     : 1
+    batch_out    : 1
+    activation   : relu
+
+pragmas:
+  interface:
+      read_kernel:
+          parse: True
+          array:
+          function:
+              - label:   ''
+                type:    skip
+                pragma:  inline
+                options: ''
+
+          loop:
+              - label:   Lcol
+                type:    fix
+                pragma:  unroll
+                options:
+                    - factor 2
+
+              - label:   Lcol
+                type:    fix
+                pragma:  pipeline
+                options:
+
+
+      read_kernel3D:
+          parse: True
+          array:
+
+          function:
+              - label:   ''
+                type:    skip
+                pragma:  inline
+                options: ''
+
+          loop:
+              - label:   Lker
+                type:    fix
+                pragma:  unroll
+                options:
+                    - factor 2
+
+              - label:   Lker
+                type:    fix
+                pragma:  pipeline
+                options:
+
+
+      read_input3D:
+          parse: True
+          array:
+          function:
+              - label:   ''
+                type:    skip
+                pragma:  inline
+                options: ''
+
+          loop:
+              - label:   Lcol
+                type:    fix
+                pragma:  unroll
+                options:
+                    - factor 2
+
+              - label:   Lcol
+                type:    fix
+                pragma:  pipeline
+                options:
+
+
+      write_result:
+          parse: False
+          array:
+          function:
+              - label:   ''
+                type:    skip
+                pragma:  inline
+                options:
+
+          loop:
+              - label:   Lrow
+                type:    fix
+                pragma:  unroll
+                options:
+                    - factor 2
+
+              - label:   Lrow
+                type:    fix
+                pragma:  pipeline
+                options:
+
+      write_result3D:
+          parse: False
+          array:
+          function:
+              - label:   ''
+                type:    skip
+                pragma:  inline
+                options:
+
+          loop:
+              - label:   Lcol
+                type:    fix
+                pragma:  unroll
+                options:
+                    - factor 2
+
+              - label:   Lcol
+                type:    fix
+                pragma:  pipeline
+                options:
+  dnn_layers:
+
+      conv_3DT1:
+          parse: False
+          array:
+
+          function:
+              - label:   ''
+                type:    fix
+                pragma:  inline
+                options:
+                  - 'off'
+
+          loop:
+              - label:   Lrow  # should be fixed
+                type:    skip
+                pragma:  pipeline
+                options:
+
+
+              - label:   Lcol  # looks not useful compared to Lcol
+                type:    var
+                pragma:  pipeline
+                options:
+
+              - label:   LlyrO   # is better to have
+                type:    var
+                pragma:  pipeline
+                options:
+
+
+              - label:   LlyrI    # should be fixed
+                type:    var
+                pragma:  pipeline
+                options:
+
+              - label:   Lwi  # need more analyzes
+                type:    skip
+                pragma:  pipeline
+                options:
+
+              - label:   Lwi  # need more analyzes
+                type:    skip
+                pragma:  unroll
+                options:
+
+              - label:   Lwj  # is better to have
+                type:    skip
+                pragma:  unroll
+                options:
+
+      ds_3DT1:
+          parse: True
+          array:
+              - label:    inW2
+                type:     fix
+                pragma:   partition
+                options:
+                 - type complete  -dim 0
+          function:
+          loop:
+              - label:   Llyr
+                type:    skip
+                pragma:  pipeline
+                options:
+
+              - label:   Lcol
+                type:    fix
+                pragma:  pipeline
+                options:
+
+              - label:   Lmax
+                type:    skip
+                pragma:  unroll
+                options:
+
+      conv2fc:
+          parse: True
+          array:
+          function:
+          loop:
+              - label:   Lrow
+                type:    skip
+                pragma:  pipeline
+                options:
+
+              - label:   Lcol
+                type:    fix
+                pragma:  pipeline
+                options:
+
+              - label:   Lcol
+                type:    fix
+                pragma:  unroll
+                options:
+
+      fc_T1:
+          parse: False
+          array:
+              - label:    mult_res
+                type:     skip
+                pragma:   partition
+                options:
+                 - type complete  -dim 1
+          function:
+          loop:
+              - label:   Lcol
+                type:    fix
+                pragma:  pipeline
+                options:
+
+              - label:   Lcol
+                type:    skip
+                pragma:  unroll
+                options:
+                    - factor 10
+                    - factor 2
+
+          resources:
+              - label:   Lcol
+                type:    fix
+                pragma:  mul
+                options:
+                  - limit 4  -type operation
+                  - limit 10  -type operation
+
+  top_module:
+    dnn_C1P1F1:
+      parse: True
+      array:
+          - label:    data_port
+            type:     skip
+            pragma:   reshape
+            options:
+             - type cyclic -factor 2 -dim 1
+
+          - label:    kernel_port
+            type:     skip
+            pragma:   reshape
+            options:
+             - type cyclic -factor 2 -dim 1
+
+          - label:    output_port
+            type:     skip
+            pragma:   reshape
+            options:
+             - type cyclic -factor 2 -dim 1
+    # ----------------------------------------------------------------------
+          - label:    L1_ker
+            type:     var
+            pragma:   partition
+            options:
+             - type block -factor 4 -dim 1
+             - type block -factor 4 -dim 2
+
+          - label:    L3_ker
+            type:     skip
+            pragma:   partition
+            options:
+             - type complete -dim 0
+    # ----------------------------------------------------------------------
+          - label:    L0_out
+            type:     skip
+            pragma:   partition
+            options:
+             - type cyclic  -factor 2 -dim 0
+
+
+          - label:    L1_out
+            type:     skip
+            pragma:   partition
+            options:
+             - type complete -dim 0
+             - type complete -dim 1
+
+          - label:    L2_out
+            type:     skip
+            pragma:   partition
+            options:
+             - type complete -dim 0
+
+          - label:    L3_out
+            type:     skip
+            pragma:   partition
+            options:
+             - type cyclic  -factor 2 -dim 1
+
+    # ----------------------------------------------------------------------
+      function:
+
+      loop:
+      resources:
+
+
+custom_pragma_list:
+# --------------------------- TOP MODULE PORTS --------------------------
+  - set_directive_array_reshape    -type cyclic -factor 2 -dim 1   "dnn_C1P1F1" data_port
+  - set_directive_array_reshape    -type cyclic -factor 2 -dim 1   "dnn_C1P1F1" kernel_port
+  - set_directive_array_reshape    -type cyclic -factor 2 -dim 1   "dnn_C1P1F1" output_port
+# --------------------------- READ/WRITE INTERFACE --------------------------
+  - set_directive_unroll           -factor 2   "interface::read_kernel/Lcol"
+  - set_directive_pipeline            "interface::read_kernel/Lcol"
+
+  - set_directive_unroll           -factor 2   "interface::read_kernel3D/Lker"
+  - set_directive_pipeline            "interface::read_kernel3D/Lker"
+
+  - set_directive_unroll           -factor 2   "interface::read_input3D/Lcol"
+  - set_directive_pipeline            "interface::read_input3D/Lcol"
+
+  - set_directive_unroll           -factor 2   "interface::write_result2D/Lcol"
+  - set_directive_pipeline            "interface::write_result2D/Lcol"
+# --------------------------- LINKING MEMORIES --------------------------
+  #- set_directive_array_partition  -type complete -dim 0   "dnn_C1P1F1" L1_ker
+  - set_directive_array_partition  -type block -factor 4 -dim 1   "dnn_C1P1F1" L1_ker
+  - set_directive_array_partition  -type block -factor 4 -dim 1   "dnn_C1P1F1" L1_out
+  #- set_directive_array_partition  -type complete -dim 3   "dnn_C1P1F1" L2_out
+
+# ---------------------------- Layers pragma ------------------------------
+  - set_directive_pipeline         "dnn_layers::conv_3DT1/Lcol"
+  - set_directive_pipeline         "dnn_layers::ds_3DT1/Lwi"
+  - set_directive_pipeline         "dnn_layers::conv2fc/Lrow"
+  - set_directive_unroll           "dnn_layers::conv2fc/Lcol"
+
+  - set_directive_pipeline         "dnn_layers::fc_T1/Lcol"
+  - set_directive_allocation       -limit 4  -type operation   "dnn_layers::fc_T1/Lcol" mul
+  - set_directive_unroll           -factor 2   "dnn_layers::fc_T1/Lcol"
+
+
+
+best_pragma_list:
+# --------------------------- TOP MODULE PORTS --------------------------
+  - set_directive_array_reshape    -type cyclic -factor 2 -dim 1   "dnn_C1P1F1" data_port
+  - set_directive_array_reshape    -type cyclic -factor 2 -dim 1   "dnn_C1P1F1" kernel_port
+  - set_directive_array_reshape    -type cyclic -factor 2 -dim 1   "dnn_C1P1F1" output_port
+# --------------------------- READ/WRITE INTERFACE --------------------------
+  - set_directive_pipeline            "interface::read_input/Lcol"
+  - set_directive_pipeline            "interface::write_result3D/Lcol"
+  - set_directive_pipeline            "interface::read_kernel/Lcol"
+  - set_directive_pipeline            "interface::read_kernel3D/Lker"
+  - set_directive_pipeline            "interface::read_input3D/Lcol"
+  - set_directive_pipeline            "interface::write_result/Lcol"
+  - set_directive_unroll           -factor 2   "interface::read_kernel/Lcol"
+  - set_directive_unroll           -factor 2   "interface::read_kernel3D/Lker"
+  - set_directive_unroll           -factor 2   "interface::read_input3D/Lcol"
+  - set_directive_unroll           -factor 2   "interface::write_result/Lcol"
+  - set_directive_unroll           -factor 2   "interface::write_result3D/Lcol"
+  - set_directive_unroll           -factor 2   "interface::read_input/Lcol"
+# --------------------------- LINKING MEMORIES --------------------------
+  #- set_directive_array_partition  -type complete -dim 0   "dnn_C1P1F1" L1_ker
+  - set_directive_array_partition  -type block -factor 4 -dim 1   "dnn_C1P1F1" L1_ker
+  - set_directive_array_partition  -type block -factor 4 -dim 1   "dnn_C1P1F1" L1_out
+  #- set_directive_array_partition  -type complete -dim 3   "dnn_C1P1F1" L2_out
+
+# ---------------------------- Layers pragma ------------------------------
+  - set_directive_pipeline         "dnn_layers::conv_3DT1/Lcol"
+  - set_directive_unroll           "dnn_layers::conv_3DT1/LlyrI"
+  #- set_directive_allocation       -limit 150  -type operation   "dnn_layers::conv_3DT1/Lwj" mul
+  - set_directive_pipeline         "dnn_layers::ds_3DT1/Lcol"
+  - set_directive_unroll           "dnn_layers::ds_3DT1/Llyr"
+  - set_directive_pipeline         "dnn_layers::conv2fc/Lrow"
+  - set_directive_pipeline         "dnn_layers::fc_T1/Lcol"
+  - set_directive_allocation       -limit 8  -type operation   "dnn_layers::fc_T1/Lcol" mul
+  - set_directive_unroll           -factor 8   "dnn_layers::fc_T1/Lcol"
+
+
+
+minimal_pragma_list:
+  # --------------------------- READ/WRITE INTERFACE --------------------------
+  - set_directive_pipeline          "interface::read_input/Lcol"
+  - set_directive_pipeline          "interface::read_kernel/Lcol"
+  - set_directive_pipeline          "interface::read_kernel3D/Lker"
+  - set_directive_pipeline          "interface::read_input3D/Lcol"
+  - set_directive_pipeline          "interface::write_result/Lrow"
+  - set_directive_pipeline          "interface::write_result3D/Lrow"
+# ---------------------------- Layers pragma ------------------------------
+  - set_directive_pipeline         "dnn_layers::conv_3DT1/LlyrO"
+  #- set_directive_allocation       -limit 150  -type operation   "dnn_layers::conv_3DT1/Lwj" mul
+  - set_directive_pipeline         "dnn_layers::ds_3DT1/Lwi"
+  - set_directive_pipeline         "dnn_layers::conv2fc/Lcol"
+  - set_directive_pipeline         "dnn_layers::fc_T1/Lcol"
+
+
+
+base_pragma_list:
+  # --------------------------- READ/WRITE INTERFACE --------------------------
+  - set_directive_pipeline          "interface::read_input/Lcol"
+  - set_directive_pipeline          "interface::read_kernel/Lcol"
+  - set_directive_pipeline          "interface::read_kernel3D/Lker"
+  - set_directive_pipeline          "interface::read_input3D/Lcol"
+  - set_directive_pipeline          "interface::write_result/Lrow"
+  - set_directive_pipeline          "interface::write_result3D/Lrow"
+# ---------------------------- Layers pragma ------------------------------
+  - set_directive_pipeline         "dnn_layers::conv_3DT1/Lwj"
+  - set_directive_pipeline         "dnn_layers::ds_3DT1/Llyr"
+  - set_directive_pipeline         "dnn_layers::conv2fc/Lcol"
+  - set_directive_pipeline         "dnn_layers::fc_T1/Lcol"
+
+none:
+
+
+interface:
+  bram:
+    - set_directive_interface        -mode bram   "dnn_C1P1F1" data_port
+    - set_directive_interface        -mode bram   "dnn_C1P1F1" kernel_port
+    - set_directive_interface        -mode bram   "dnn_C1P1F1" output_port
+
+  axi:
+    - set_directive_interface -mode axis -register -register_mode both "dnn_C1P1F1" data_port
+    - set_directive_interface -mode axis -register -register_mode both "dnn_C1P1F1" kernel_port
+    - set_directive_interface -mode axis -register -register_mode both "dnn_C1P1F1" output_port
+
+  none:
+    - ''
+
+
+analyze_results:
+  -topmodule: C1P1F1
