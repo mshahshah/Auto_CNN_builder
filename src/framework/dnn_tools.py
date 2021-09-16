@@ -21,7 +21,6 @@ import numpy as np
 import yaml , math
 import subprocess, copy
 cur_path = os.getcwd()
-sys.path.append('/home/eng/m/mxs161831/Desktop/dnn_small')
 import pickle
 
 from utils import utils

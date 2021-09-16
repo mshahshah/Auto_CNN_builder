@@ -187,7 +187,7 @@ class hls_tools():
         start_time = self.utils.record_time()
         impl_file = ['power_analyzer.tcl', 'run_power_analyzer.bat']
         for fname in impl_file:
-            srcfile = os.path.join(self.cfg.paths.src, fname)
+            srcfile = os.path.join(self.cfg.paths.src, 'framework' , fname)
             destfile = os.path.join(dest_path, 'impl', fname)
             shutil.copyfile(srcfile, destfile)
         os.chdir(os.path.join(dest_path, 'impl'))
@@ -748,7 +748,7 @@ class hls_tools():
             shutil.rmtree(self.cfg.paths.integration)
         src = os.path.join(self.cfg.paths.solution,'impl','ip')
         dest = os.path.join(self.cfg.paths.integration,'ip')
-        shutil.copytree(src,dest)
+        shutil.copytree(src, dest)
         dest = os.path.join(self.cfg.paths.integration,'test_files')
         shutil.copytree(self.cfg.paths.test_files,dest)
 

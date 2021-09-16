@@ -31,9 +31,6 @@ import logging, time
 
 
 cur_path = os.getcwd()
-sys.path.append('/home/eng/m/mxs161831/Desktop/dnn_small')
-sys.path.append(os.path.join(cur_path, 'dnn_python'))
-
 
 
 from utils import *

@@ -1,22 +1,21 @@
 {
 	"folders": [
-		{
-			"path": "./"
-		}
+	{
+	"path": "./"
+	}
 	],
 	"settings": {
-		"python.pythonPath": "setup/py_env/bin/python3.8"
+	   "python.pythonPath": "setup/py_env/bin/python"
 	},
 	"launch": {
 		"version": "0.2.0",
 		"configurations": [
-
 			{
-				"name": "dnn_framework",
+				"name": "Python: Current File",
 				"type": "python",
 				"request": "launch",
 				"program": "dnn_framework.py",
-				"args": ["-mode","skip"],
+				"args": ["-mode","syn"],
 				"console": "integratedTerminal"
 			}
 		]
