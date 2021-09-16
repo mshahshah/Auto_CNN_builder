@@ -1,4 +1,4 @@
-
+cd setup
 if [ ! -d py_env ]; then
    if [ "${ARCH}" = "i686" ]; then
      python3.8 -m venv py_env
@@ -24,3 +24,4 @@ if [ ! -d py_env ]; then
 else
    source py_env/bin/activate
 fi
+cd -

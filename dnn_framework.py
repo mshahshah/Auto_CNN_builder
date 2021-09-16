@@ -25,7 +25,9 @@ import numpy as np
 print("Welcome! dnn_framework.py is executed")
 cur_path = os.getcwd()
 sys.path.append(cur_path)
-sys.path.append(os.path.join(cur_path, 'dnn_python'))
+sys.path.append(os.path.join(cur_path, 'src'))
+sys.path.append(os.path.join(cur_path, 'sim'))
+sys.path.append(os.path.join(cur_path, 'src/framework'))
 
 from utils import *
 from utils import beep

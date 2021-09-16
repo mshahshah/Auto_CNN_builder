@@ -82,7 +82,7 @@ class configure_design:
 
     def parse_yaml_design_arguments(self):
         datamap_dict = {}
-        with open(os.path.join(self.cfg.paths.src, '{}.yaml'.format(self.cfg.design_setting.design_model))) as f:
+        with open(os.path.join('cnn_models', '{}.yaml'.format(self.cfg.design_setting.design_model))) as f:
             datamap = yaml.safe_load(f)
             datamap = Struct(**datamap)
             datamap_dict['design'] = Struct(**datamap.design)
@@ -122,7 +122,7 @@ class configure_design:
 
     def parse_yaml_FPGA_chips(self):
         datamap_dict={}
-        with open('fpga_resources.yaml') as f:
+        with open('src/fpga_resources.yaml') as f:
             datamap = yaml.safe_load(f)
             #for i in datamap.keys():
             #    datamap_dict[i] = Struct(**datamap[i])
@@ -137,10 +137,10 @@ class configure_design:
         files={}
         paths['design_top'] = os.getcwd()
         if self.options.mode in ['evaluate_model','evaluate_model_report']:
-            paths['design_model'] = os.path.join(paths['design_top'], 'all_models_evaluation')
+            paths['design_model'] = os.path.join(paths['design_top'], 'cnn_models', 'all_models_evaluation')
         else:
-            paths['design_model'] = os.path.join(paths['design_top'], self.cfg.design_setting.design_model)
-        paths['python'] = os.path.join(paths['design_top'], 'dnn_python')
+            paths['design_model'] = os.path.join(paths['design_top'], 'cnn_models', self.cfg.design_setting.design_model)
+        # paths['python'] = os.path.join(paths['design_top'], 'dnn_python')
         paths['hls'] = os.path.join(paths['design_model'], 'hls')
         paths['solution'] = os.path.join(paths['hls'], self.cfg.design_setting.solution_name)
         paths['directive_list'] = os.path.join(paths['design_model'], self.cfg.design_setting.solution_name + '_sol_list')
@@ -212,7 +212,7 @@ class configure_design:
         :return: none
         '''
         for extension in extensions:
-            files = glob.iglob(os.path.join(self.paths.src, '*.{}'.format(extension)))
+            files = glob.iglob(os.path.join(self.paths.src, 'hardware', '*.{}'.format(extension)))
             for file in files:
                 if os.path.isfile(file):
                     shutil.copy(file, self.paths.design_model)
