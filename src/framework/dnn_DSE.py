@@ -1083,9 +1083,6 @@ class dnn_dse:
         os.chdir(self.cfg.paths.design_model)
 
         for network in self.cfg.design_setting.DSE_setting['cfg_ranges']['networks'].keys():
-            gen_configs = configure_design()
-            cfg = gen_configs.create_cfg(options)
-            gen_configs.prepare_design()
             self.cfg.design_setting.design_model = network
             parsed_cfg = gen_configs.parse_yaml_design_arguments()
             self.cfg.design_layers = parsed_cfg['design_layers']

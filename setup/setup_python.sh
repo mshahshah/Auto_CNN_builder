@@ -24,4 +24,4 @@ if [ ! -d py_env ]; then
 else
    source py_env/bin/activate
 fi
-cd -
+cd ../
