@@ -25,8 +25,7 @@ import pickle
 
 from utils import utils
 from utils import Struct
-from dnn_analyzer import *
-from dnn_DSE import *
+
 
 
 
@@ -81,7 +80,7 @@ class configure_design:
 
     def parse_yaml_design_arguments(self):
         datamap_dict = {}
-        with open(os.path.join('cnn_models', '{}.yaml'.format(self.cfg.design_setting.design_model))) as f:
+        with open(os.path.join(self.cfg.paths.cnn_models, '{}.yaml'.format(self.cfg.design_setting.design_model))) as f:
             datamap = yaml.safe_load(f)
             datamap = Struct(**datamap)
             datamap_dict['design'] = Struct(**datamap.design)
@@ -135,6 +134,7 @@ class configure_design:
         paths={}
         files={}
         paths['design_top'] = os.getcwd()
+        paths['cnn_models'] = os.path.join(paths['design_top'], 'cnn_models')
         if self.options.mode in ['evaluate_model','evaluate_model_report']:
             paths['design_model'] = os.path.join(paths['design_top'], 'cnn_models', 'all_models_evaluation')
         else:

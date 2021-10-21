@@ -28,7 +28,8 @@ from operator import itemgetter
 from datetime import datetime
 import concurrent.futures
 import logging, time
-
+from dnn_tools import *
+from dnn_analyzer import * 
 
 cur_path = os.getcwd()
 
@@ -39,11 +40,11 @@ from hls_tools import *
 from hls_tools import collect_design_notes
 
 lyr_map2syn = {
-    'dnn_LeNet':'dnn_LeNet',
-    'dnn_C1P1F1':'dnn_C1P1F1',
-    'dnn_C2P2F1':'dnn_C2P2F1',
-    'dnn_AlexNet':'dnn_AlexNet',
-    'dnn_ConvNet':'dnn_ConvNet',
+    'LeNet':'dnn_LeNet',
+    'C1P1F1':'dnn_C1P1F1',
+    'C2P2F1':'dnn_C2P2F1',
+    'AlexNet':'dnn_AlexNet',
+    'ConvNet':'dnn_ConvNet',
     'IN':'read_input3D',
     'CONV':'conv_3DT1',
     'POOL':'ds_3DT1',
@@ -255,141 +256,14 @@ def run_dse_cfg(utils, hls_tools, dnn_analyzer, dnn_tools, cfg):
         utils.save_a_variable('model_layers_name', model_layers_name)
     return syn_results, lyr_configs, model_layers_name
 
-def run_dse_clk_pragma_cfg(cfg):
-    '''
-    Runs DSE over many different pragma combinations
-    For each pragma set, explore the CNN layer configurations using the user provided ranges
-    :param cfg:
-    :return:
-    '''
-    target_layer = 1  # the DSE will change the configuration of this target layer
-    lyr_cfg_analyzer_label = ['w_in', 'w_out', 'lyr_in', 'lyr_out', 'w_ker', 'stride']
-    if options.mode == 'dse_clk_pragma_cfg_report':
-        return
-    else:
-
-        clk_range = cfg.design_setting.DSE_setting['clock_range']
-        freq_list = np.linspace(clk_range['min'], clk_range['max'], clk_range['samples']).astype(int)
-        period_list = np.around(1000 / freq_list, 1)
-
-        # setup CNN layer configs to explore
-        syn_results = []
-        lyr_configs = []
-        org_cfg = copy.deepcopy(cfg.design_layers)
-        os.chdir(cfg.paths.design_model)
-
-        for network in cfg.design_setting.DSE_setting['cfg_ranges']['networks'].keys():
-            cfg.design_setting.design_model = network
-            parsed_cfg = gen_configs.parse_yaml_design_arguments()
-            cfg.design_layers = parsed_cfg['design_layers']
-            cfg.pragmas = parsed_cfg['pragmas']
-
-            # setup pragmas to explore
-            [fixed_pragmas, variable_pragmas, total_comb] = hls_tools.pars_dnn_design_pragmas(cfg.pragmas['variable'])
-            selection_type = cfg.design_setting.DSE_setting['directive_selection']
-            selected_pragmas = dnn_dse.create_dse_directive_tcl_file(selection_type, fixed_pragmas, variable_pragmas,
-                                                                     total_comb)
-
-            comb_list = generate_list_of_conv(cfg)
-            total_comb = len(comb_list['lyr_in'])
-            config_list = random.sample(range(total_comb), cfg.design_setting.DSE_setting['config_count'])
-
-            total_count = len(config_list) * len(selected_pragmas) * len(period_list)
-            print(40*'='+" Design : {} ".format(network)+40*'=')
-            print('DSE_PRAGMA_CFG_Clock: Begin DSE. Total number of combinations are {}'.format(total_count))
-        # For each set in selected_pragmas, run synthesis for all configs in config_list
-            for clk_indx, clk_period in enumerate(period_list):
-                for pragma_ind, pragma_sol in enumerate(selected_pragmas):
-                    # setup this pragma_sol for synthesis
-                    copyfile(os.path.join(cfg.paths.directive_list, "solution_{}.tcl".format(pragma_sol)), cfg.files.DirectiveFile)
-                    hls_tools.create_syn_tcl_file(clk_period=clk_period)
-                    for cfg_ind, cfg_sol in enumerate(config_list):
-                        design_name = '{}_{}_{}'.format(pragma_sol, clk_period, cfg_sol)
-                        # setup this cfg_sol for synthesis
-                        cfg.design_layers = copy.deepcopy(org_cfg)
-                        for label in comb_list.keys():
-                            if label == 'lyr_in':
-                                cfg.design_layers[target_layer - 1]['lyr_out'] = comb_list[label][cfg_sol]
-                            elif label == 'w_out':
-                                cfg.design_layers[target_layer - 1][label] = comb_list[label][cfg_sol]
-                            else:
-                                cfg.design_layers[target_layer][label] = comb_list[label][cfg_sol]
-
-                        given_lyrs, given_var_types = dnn_tools.pars_user_layer_defined()
-                        dnn_configs = dnn_tools.create_dnn_configs_file(given_lyrs, given_var_types)
-                        analyze_results = dnn_analyzer.analyze_given_model(given_lyrs)
-                        fname = os.path.join(cfg.paths.dse_analyzes, 'analyzes{}'.format(design_name))
-                        dnn_analyzer.save_overall_report(fname=fname, plot=False)
-
-                        # print info bar
-                        print_str = ''
-                        for cfg_label in lyr_cfg_analyzer_label:
-                            print_str = print_str + ', {}={}'.format(cfg_label, dnn_configs[target_layer][cfg_label])
-                        print(100 * "=")
-                        current_indx = clk_indx*len(selected_pragmas)*len(config_list)+ pragma_ind*len(config_list) + cfg_ind + 1
-                        print("DSE_PRAGMA_CFG_CLK: {}/{} design{} is started.\nlyr={} {}".format(
-                            current_indx , total_count, design_name, target_layer, print_str))
-
-                        # run the HLS synthesis
-                        start_time = utils.record_time()
-                        syn_status = hls_tools.run_hls_synth('syn', cfg.design_setting.syn_timeout, 'silent',
-                                                                  clean=True, sol=pragma_sol)
-                        [mm, ss] = utils.end_and_print_time(start_time)
-                        if not syn_status:
-                            continue
-
-                        temp, model_layers_name = hls_tools.read_parallel_syn_results(pragma_sol, [mm, ss], False)
-                        temp['solution'] = design_name
-                        postSyn, power = hls_tools.run_vivado_implementation(pragma_sol, mode='dse_pragma', print_out='silent', clean=True)
-                        temp.update(postSyn)
-                        temp.update(power)
-                        temp['dtype'] = '{} bits'.format(cfg.design_variable_types['ker_t'])
-                        temp['dse_lyr'] = target_layer
-
-                        analyze_exec = {}
-                        syn_exec = {}
-                        ratio = {}
-                        for sublyr in list(analyze_results.keys()):
-                            a = lyr_map2syn[sublyr.split('_')[1]]
-                            for ll in model_layers_name:
-                                if a in ll:
-                                    syn_lbl = ll
-                                else:
-                                    continue
-                                analyze_exec[syn_lbl] = int(analyze_results[sublyr]['latency']) + 1  # +1 to make make > 0
-                                syn_exec[syn_lbl] = int(temp[syn_lbl]['latency']) + 1  # +1 to make make > 0
-                                ratio[syn_lbl] = round(analyze_exec[syn_lbl] / syn_exec[syn_lbl], 2)
-                        comparison = {'math_exec': analyze_exec,
-                                      'syn_exec': syn_exec,
-                                      'math-syn': ratio}
-
-                        design = {'ID': design_name,
-                                  'lyr_cfg': given_lyrs,
-                                  'syn_results': temp,
-                                  'analyzes': analyze_results,
-                                  'inserted_pragma': cfg.dse_pragmas[pragma_sol],
-                                  'comparison': comparison}
-                        specifier = '{}_{}'.format(clk_period, cfg_sol)
-                        copy_solution_files(cfg, pragma_sol, specifier=specifier)
-                        hls_tools.copy_hls_bc_files(pragma_sol, specifier=specifier)
-                        utils.save_a_variable('design{}'.format(design_name), design)
-                        if cfg.design_setting.DSE_setting['remove_hls_run_directories'] and \
-                                    os.path.exists(os.path.join(cfg.paths.design_model, 'hls{}'.format(pragma_sol))):
-                                    shutil.rmtree(os.path.join(cfg.paths.design_model, 'hls{}'.format(pragma_sol)))
-
-                        syn_results.append(temp)
-                        lyr_configs.append(given_lyrs)
-                        utils.save_a_variable('lyr_configs', lyr_configs)
-                        utils.save_a_variable('syn_results', syn_results)
-        dnn_dse.copy_all_design_sourcefile()
-        os.chdir(cfg.paths.design_top)
-    return syn_results, lyr_configs, model_layers_name
 
 
 class dnn_dse:
     def __init__(self,cfg):
         self.cfg = cfg
         self.hls_tools = hls_tools(cfg)
+        self.dnn_tools = dnn_tools(cfg)
+        self.dnn_analyzer = dnn_analyzer(cfg)
         self.utils = utils(cfg)
         self.ann = []
 
@@ -1186,3 +1060,134 @@ class dnn_dse:
         self.copy_all_design_sourcefile()
         return dse_var_list
 
+    def run_dse_clk_pragma_cfg(self, options, gen_configs):
+        '''
+        Runs DSE over many different pragma combinations
+        For each pragma set, explore the CNN layer configurations using the user provided ranges
+        :param cfg:
+        :return:
+        '''
+        target_layer = 1  # the DSE will change the configuration of this target layer
+        lyr_cfg_analyzer_label = ['w_in', 'w_out', 'lyr_in', 'lyr_out', 'w_ker', 'stride']
+        if options.mode == 'dse_clk_pragma_cfg_report':
+            return
+
+        clk_range = self.cfg.design_setting.DSE_setting['clock_range']
+        freq_list = np.linspace(clk_range['min'], clk_range['max'], clk_range['samples']).astype(int)
+        period_list = np.around(1000 / freq_list, 1)
+
+        # setup CNN layer configs to explore
+        syn_results = []
+        lyr_configs = []
+        org_cfg = copy.deepcopy(self.cfg.design_layers)
+        os.chdir(self.cfg.paths.design_model)
+
+        for network in self.cfg.design_setting.DSE_setting['cfg_ranges']['networks'].keys():
+            gen_configs = configure_design()
+            cfg = gen_configs.create_cfg(options)
+            gen_configs.prepare_design()
+            self.cfg.design_setting.design_model = network
+            parsed_cfg = gen_configs.parse_yaml_design_arguments()
+            self.cfg.design_layers = parsed_cfg['design_layers']
+            self.cfg.pragmas = parsed_cfg['pragmas']
+
+            # setup pragmas to explore
+            [fixed_pragmas, variable_pragmas, total_comb] = self.hls_tools.pars_dnn_design_pragmas(self.cfg.pragmas['variable'])
+            selection_type = self.cfg.design_setting.DSE_setting['directive_selection']
+            selected_pragmas = self.create_dse_directive_tcl_file(selection_type, fixed_pragmas, variable_pragmas,
+                                                                    total_comb)
+
+            comb_list = generate_list_of_conv(self.cfg)
+            total_comb = len(comb_list['lyr_in'])
+            config_list = random.sample(range(total_comb), self.cfg.design_setting.DSE_setting['config_count'])
+
+            total_count = len(config_list) * len(selected_pragmas) * len(period_list)
+            print(40*'='+" Design : {} ".format(network)+40*'=')
+            print('DSE_PRAGMA_CFG_Clock: Begin DSE. Total number of combinations are {}'.format(total_count))
+        # For each set in selected_pragmas, run synthesis for all configs in config_list
+            for clk_indx, clk_period in enumerate(period_list):
+                for pragma_ind, pragma_sol in enumerate(selected_pragmas):
+                    # setup this pragma_sol for synthesis
+                    copyfile(os.path.join(self.cfg.paths.directive_list, "solution_{}.tcl".format(pragma_sol)), self.cfg.files.DirectiveFile)
+                    self.hls_tools.create_syn_tcl_file(clk_period=clk_period)
+                    for cfg_ind, cfg_sol in enumerate(config_list):
+                        design_name = '{}_{}_{}'.format(pragma_sol, clk_period, cfg_sol)
+                        # setup this cfg_sol for synthesis
+                        self.cfg.design_layers = copy.deepcopy(org_cfg)
+                        for label in comb_list.keys():
+                            if label == 'lyr_in':
+                                self.cfg.design_layers[target_layer - 1]['lyr_out'] = comb_list[label][cfg_sol]
+                            elif label == 'w_out':
+                                self.cfg.design_layers[target_layer - 1][label] = comb_list[label][cfg_sol]
+                            else:
+                                self.cfg.design_layers[target_layer][label] = comb_list[label][cfg_sol]
+
+                        given_lyrs, given_var_types = self.dnn_tools.pars_user_layer_defined()
+                        dnn_configs = self.dnn_tools.create_dnn_configs_file(given_lyrs, given_var_types)
+                        analyze_results = self.dnn_analyzer.analyze_given_model(given_lyrs)
+                        fname = os.path.join(self.cfg.paths.dse_analyzes, 'analyzes{}'.format(design_name))
+                        self.dnn_analyzer.save_overall_report(fname=fname, plot=False)
+
+                        # print info bar
+                        print_str = ''
+                        for cfg_label in lyr_cfg_analyzer_label:
+                            print_str = print_str + ', {}={}'.format(cfg_label, dnn_configs[target_layer][cfg_label])
+                        print(100 * "=")
+                        current_indx = clk_indx*len(selected_pragmas)*len(config_list)+ pragma_ind*len(config_list) + cfg_ind + 1
+                        print("DSE_PRAGMA_CFG_CLK: {}/{} design{} is started.\nlyr={} {}".format(
+                            current_indx , total_count, design_name, target_layer, print_str))
+
+                        # run the HLS synthesis
+                        start_time = self.utils.record_time()
+                        syn_status = self.hls_tools.run_hls_synth('syn', self.cfg.design_setting.syn_timeout, 'silent',
+                                                                clean=True, sol=pragma_sol)
+                        [mm, ss] = self.utils.end_and_print_time(start_time)
+                        if not syn_status:
+                            continue
+
+                        temp, model_layers_name = self.hls_tools.read_parallel_syn_results(pragma_sol, [mm, ss], False)
+                        temp['solution'] = design_name
+                        postSyn, power = self.hls_tools.run_vivado_implementation(pragma_sol, mode='dse_pragma', print_out='silent', clean=True)
+                        temp.update(postSyn)
+                        temp.update(power)
+                        temp['dtype'] = '{} bits'.format(self.cfg.design_variable_types['ker_t'])
+                        temp['dse_lyr'] = target_layer
+
+                        analyze_exec = {}
+                        syn_exec = {}
+                        ratio = {}
+                        for sublyr in list(analyze_results.keys()):
+                            a = lyr_map2syn[sublyr.split('_')[1]]
+                            for ll in model_layers_name:
+                                if a in ll:
+                                    syn_lbl = ll
+                                else:
+                                    continue
+                                analyze_exec[syn_lbl] = int(analyze_results[sublyr]['latency']) + 1  # +1 to make make > 0
+                                syn_exec[syn_lbl] = int(temp[syn_lbl]['latency']) + 1  # +1 to make make > 0
+                                ratio[syn_lbl] = round(analyze_exec[syn_lbl] / syn_exec[syn_lbl], 2)
+                        comparison = {'math_exec': analyze_exec,
+                                    'syn_exec': syn_exec,
+                                    'math-syn': ratio}
+
+                        design = {'ID': design_name,
+                                'lyr_cfg': given_lyrs,
+                                'syn_results': temp,
+                                'analyzes': analyze_results,
+                                'inserted_pragma': self.cfg.dse_pragmas[pragma_sol],
+                                'comparison': comparison}
+                        specifier = '{}_{}'.format(clk_period, cfg_sol)
+                        copy_solution_files(self.cfg, pragma_sol, specifier=specifier)
+                        self.hls_tools.copy_hls_bc_files(pragma_sol, specifier=specifier)
+                        self.utils.save_a_variable('design{}'.format(design_name), design)
+                        if self.cfg.design_setting.DSE_setting['remove_hls_run_directories'] and \
+                                    os.path.exists(os.path.join(self.cfg.paths.design_model, 'hls{}'.format(pragma_sol))):
+                                    shutil.rmtree(os.path.join(self.cfg.paths.design_model, 'hls{}'.format(pragma_sol)))
+
+                        syn_results.append(temp)
+                        lyr_configs.append(given_lyrs)
+                        self.utils.save_a_variable('lyr_configs', lyr_configs)
+                        self.utils.save_a_variable('syn_results', syn_results)
+        dnn_dse.copy_all_design_sourcefile()
+        os.chdir(self.cfg.paths.design_top)
+        return syn_results, lyr_configs, model_layers_name

@@ -189,7 +189,10 @@ class hls_tools():
         for fname in impl_file:
             srcfile = os.path.join(self.cfg.paths.src, 'framework' , fname)
             destfile = os.path.join(dest_path, 'impl', fname)
-            shutil.copyfile(srcfile, destfile)
+            try:
+                shutil.copyfile(srcfile, destfile)
+            except:
+                print("ERR: HLS_TOOLS: Source file {} or Dest file {} is not exist!")
         os.chdir(os.path.join(dest_path, 'impl'))
         
         
@@ -222,9 +225,6 @@ class hls_tools():
         for fname in filesToBeRemoved:
             if os.path.exists(fname):
                 os.remove(fname)
-                os.mkdir(fname)
-            else:
-                os.mkdir(fname)
         for dir in dir_list:
             if os.path.exists(dir):
                 shutil.rmtree(dir)

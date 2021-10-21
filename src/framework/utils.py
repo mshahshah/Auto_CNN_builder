@@ -62,9 +62,10 @@ class utils:
             if hasattr(v, "__dict__"):
                 utils.printDict(self, v, num_tabs+1)
 
-    def find_Aword_in_file(self,filename,keyword,save_results=True):
+    def find_Aword_in_file(self, filename, keyword, save_results=True):
+        return 0
         try:
-            file = open(filename,'r')
+            file = open(filename, 'r')
             read=file.readlines()
             file.close()
             count = 0

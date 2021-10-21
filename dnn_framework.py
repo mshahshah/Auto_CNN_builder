@@ -75,7 +75,7 @@ def getOptions(args=sys.argv[1:]):
 # ###################################################################
 # ######################  ALL  DSE    ###############################
 
-def run_dse(cfg, dse_modules):
+def run_dse(cfg, dse_modules, gen_configs):
     '''
     Performs Design Space Exploration (DSE) for the type of exploration specified by the python run options
     :param cfg: configuration object
@@ -100,7 +100,7 @@ def run_dse(cfg, dse_modules):
         design_solutions = dnn_dse.run_dse_pragma_clock(cfg.run_options)
         design_solutions = dnn_dse.create_dse_excel_report_new(target_layers='all', add_cfg_labels=False)
     elif cfg.run_options.mode in ['dse_clk_pragma_cfg', 'dse_clk_pragma_cfg_report']:
-        run_dse_clk_pragma_cfg(cfg)
+        dnn_dse.run_dse_clk_pragma_cfg(cfg.run_options, gen_configs)
         design_solutions = dnn_dse.create_dse_excel_report_new(target_layers='all', add_cfg_labels=True)
         path = cfg.paths.dse_report
         create_data_for_estimation(dnn_dse, dnn_analyzer, cfg, path)
@@ -272,7 +272,7 @@ if __name__ == '__main__':
 
     # -----------------------------------------------------------------------------------------------------
     if 'dse' in options.mode:
-        run_dse(cfg, dse_modules)
+        run_dse(cfg, dse_modules, gen_configs)
         utils.end_and_print_time_and_label(start_time, 'DSE finished')
         start_time = utils.record_time()
 
