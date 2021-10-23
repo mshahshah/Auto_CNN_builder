@@ -680,8 +680,7 @@ class hls_tools():
                 temp = temp + '_{}'.format(specifier)
             if not os.path.exists(temp):
                 os.mkdir(temp)
-            bc_path = os.path.join(self.cfg.paths.design_model, 'hls{}'.format(sol_counter),
-                                   self.cfg.design_setting.solution_name, '.autopilot', 'db')
+            bc_path = os.path.join(self.cfg.paths.design_model, 'hls{}_{}'.format(sol_counter,specifier), self.cfg.design_setting.solution_name, '.autopilot', 'db')
             try:
                 for file in glob.iglob(os.path.join(bc_path, 'a.o.3.bc')):
                     shutil.copy2(file, temp)
