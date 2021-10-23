@@ -16,10 +16,11 @@
 import numpy as np
 import os, shutil
 from os import listdir
-import csv, time, sys
+import csv, time, datetime, sys
 import pickle,re, argparse
 import matplotlib.pyplot as plt
 import glob, pandas
+from datetime import datetime
 
 class Struct:
     def __init__(self, **entries):
@@ -51,6 +52,10 @@ class utils:
         self.hello=0
         self.cfg = cfg
 
+    def print_current_time(self):
+        now = datetime.now()
+        dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
+        print("****** Current date and time :", dt_string, '*********\n')	
 
     def printDict(self, cfg, num_tabs = 0):
         if(num_tabs == 0):
@@ -63,14 +68,13 @@ class utils:
                 utils.printDict(self, v, num_tabs+1)
 
     def find_Aword_in_file(self, filename, keyword, save_results=True):
-        return 0
         try:
             file = open(filename, 'r')
             read=file.readlines()
             file.close()
             count = 0
             detected_list = []
-            for lineNum,line in enumerate(read, start = 1):
+            for lineNum, line in enumerate(read, start = 1):
                 if line != '\n' and len(line) > 2: # if line is not blank
                     split = line.split()
                     first_word = line.split()[0].lower()

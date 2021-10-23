@@ -219,11 +219,11 @@ if __name__ == '__main__':
     dnn_tools = dnn_tools(cfg)
     hls_tools = hls_tools(cfg)
     dnn_dse = dnn_dse(cfg)
-
+    utils.print_current_time()
     # Parse the specified dnn yaml file
     given_lyrs, given_var_types = dnn_tools.pars_user_layer_defined()
     dnn_tools.print_user_layer_defined(given_lyrs)
-
+    
     utils.end_and_print_time_and_label(start_time, 'Parsing User data')
     start_time = utils.record_time()
     # -----------------------------------------------------------------------------------------------------
@@ -316,7 +316,7 @@ if __name__ == '__main__':
         else:
             print("PYTHON : Mapping Skipped")
 
-
+utils.print_current_time()
 print('PYTHON : Task Completed !')
 
 
