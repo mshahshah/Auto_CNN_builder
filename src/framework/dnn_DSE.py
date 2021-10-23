@@ -127,7 +127,6 @@ def generate_list_of_conv(cfg):
     comb_list['lyr_in'] = lyrin_list
     comb_list['w_ker'] = ker_list
     comb_list['stride'] = strd_list
-    print('list made')
     return comb_list
 
 
@@ -145,7 +144,6 @@ def generate_list_of_fc(cfg):
 
     comb_list['lyr_out'] = lyrout_list
     comb_list['lyr_in'] = lyrin_list
-    print('list made')
     return comb_list
 
 
@@ -546,55 +544,62 @@ class dnn_dse:
         else:
             [new_sublayers.pop(i) if j.split('_')[0] in ['read', 'write'] else 0 for i, j in enumerate(sublayers)]
 
+        
         # Write to the CSV report files for the CNN, and for each layer in the CNN.
         for lyrN, sublyr in enumerate(new_sublayers):
             filename = os.path.join(self.cfg.paths.dse_report, "dse_{}.csv".format(sublyr))
             f = open(filename, "w+")
+            syn_results_labels = list(solutions_list[rpt_ref_sol]['syn_results'][sublyr].keys())
+            sub_lyr_report_lables = cfg_labels + syn_results_labels
+            # Write the first row: List of labels based on the file type
             if sublyr != self.cfg.design_setting.topmodule and add_cfg_labels:
-                for i in cfg_labels:
+                for i in sub_lyr_report_lables:
                     f.write(i + ',')
-            for item in design_labels + list(solutions_list[rpt_ref_sol]['syn_results'][sublyr].keys()) + additional_label1 + additional_label2 + comp_labels + efficiency_labels:
-                f.write(item + ',')
+            else:
+                for item in design_labels + syn_results_labels + additional_label1 + additional_label2 + comp_labels + efficiency_labels:
+                    f.write(item + ',')
             f.write('\n')
-
+            # Writing other lines: each solution result
             for indx, solution in enumerate(solutions_list, start=0):
                 if solution['syn_results']['syn_status'] == 'failed':
                     f.write(solution['syn_results']['syn_status'] + ',')
                     f.write(solution['syn_results']['syn_time'] + ',')
                 else:
 
-                    if sublyr != self.cfg.design_setting.topmodule and add_cfg_labels:
+                    if sublyr != self.cfg.design_setting.topmodule and add_cfg_labels: # if it is a sublayer
                         for i in cfg_labels:
                             f.write(str(solution['lyr_cfg'][lyrN+1].get(i, 'NR')) + ',')
+                        for key in syn_results_labels:
+                            f.write(str(solution['syn_results'][sublyr].get(key, 'NR')) + ',')
+                    else:
+                        for i in design_labels:
+                            f.write(str(solution['syn_results'].get(i, 'NR')) + ',')
 
-                    for i in design_labels:
-                        f.write(str(solution['syn_results'].get(i, 'NR')) + ',')
+                        for key in syn_results_labels:
+                            f.write(str(solution['syn_results'][sublyr].get(key, 'NR')) + ',')
 
-                    for key in solution['syn_results'][sublyr].keys():
-                        f.write(str(solution['syn_results'][sublyr].get(key, 'NR')) + ',')
+                        for key in additional_label1:
+                            f.write(str(solution['topmodule_estimation'].get(key, 'NR')) + ',')
 
-                    for key in additional_label1:
-                        f.write(str(solution['topmodule_estimation'].get(key, 'NR')) + ',')
+                        for key in additional_label2:
+                            f.write(str(solution['results_deviation'].get(key, 'NR')) + ',')
 
-                    for key in additional_label2:
-                        f.write(str(solution['results_deviation'].get(key, 'NR')) + ',')
+                        for key in comp_labels:
+                            f.write(str(solution['comparison'][key][sublyr]) + ',')
 
-                    for key in comp_labels:
-                        f.write(str(solution['comparison'][key][sublyr]) + ',')
+                        # Compute efficiency metrics
+                        GOPS = solution['syn_results'][sublyr].get('GOPS', 0)
+                        P_Total = solution['syn_results'].get('P_Total', 1)
+                        used_DSP = solution['syn_results'].get('DSP_PS', 1)
+                        used_BRAM = solution['syn_results'].get('BRAM_PS', 1)
 
-                    # Compute efficiency metrics
-                    GOPS = solution['syn_results'][sublyr].get('GOPS', 0)
-                    P_Total = solution['syn_results'].get('P_Total', 1)
-                    used_DSP = solution['syn_results'].get('DSP_PS', 1)
-                    used_BRAM = solution['syn_results'].get('BRAM_PS', 1)
+                        if 'NR' not in [GOPS, P_Total]:
+                            P_eff = 1000*float(GOPS) / float(P_Total)
+                            f.write(str(P_eff) + ',')
 
-                    if 'NR' not in [GOPS, P_Total]:
-                        P_eff = 1000*float(GOPS) / float(P_Total)
-                        f.write(str(P_eff) + ',')
-
-                    if 'NR' not in [GOPS, used_DSP, used_BRAM]:
-                        A_eff = float(GOPS) * float(self.cfg.FPGA.DSP)/float(used_DSP) * float(self.cfg.FPGA.BRAM) / float(used_BRAM)
-                        f.write(str(A_eff) + ',')
+                        if 'NR' not in [GOPS, used_DSP, used_BRAM]:
+                            A_eff = float(GOPS) * float(self.cfg.FPGA.DSP)/float(used_DSP) * float(self.cfg.FPGA.BRAM) / float(used_BRAM)
+                            f.write(str(A_eff) + ',')
 
                 f.write('\n')
             f.close()
@@ -670,8 +675,8 @@ class dnn_dse:
             self.utils.save_list_to_file(filename, tcl_lines)
         self.cfg.dse_pragmas = dse_pragmas
         print("PYTHON : DSE: Pragma style = {}\n\tTotal possible directive combinations  = {}".format(pragma_gen_style,total_comb))
-        print("\tTotal requested combinations  = {}.".format( total_dse_solutions))
-        print("\t{} directive tcl files are created!".format(total_dse_solutions))
+        print("\t\tTotal requested combinations  = {}.".format( total_dse_solutions))
+        print("\t\t{} directive tcl files are created!".format(total_dse_solutions))
         return selected_solutions
 
     def read_dse_syn_results(self, syn_exec_time):
@@ -1137,14 +1142,14 @@ class dnn_dse:
                         # run the HLS synthesis
                         start_time = self.utils.record_time()
                         syn_status = self.hls_tools.run_hls_synth('syn', self.cfg.design_setting.syn_timeout, 'silent',
-                                                                clean=True, sol=pragma_sol)
+                                                                clean=False, sol=design_name)
                         [mm, ss] = self.utils.end_and_print_time(start_time)
                         if not syn_status:
                             continue
 
-                        temp, model_layers_name = self.hls_tools.read_parallel_syn_results(pragma_sol, [mm, ss], False)
+                        temp, model_layers_name = self.hls_tools.read_parallel_syn_results(design_name, [mm, ss], False)
                         temp['solution'] = design_name
-                        postSyn, power = self.hls_tools.run_vivado_implementation(pragma_sol, mode='dse_pragma', print_out='silent', clean=True)
+                        postSyn, power = self.hls_tools.run_vivado_implementation(design_name, mode='dse_pragma', print_out='silent', clean=True)
                         temp.update(postSyn)
                         temp.update(power)
                         temp['dtype'] = '{} bits'.format(self.cfg.design_variable_types['ker_t'])
@@ -1185,6 +1190,6 @@ class dnn_dse:
                         lyr_configs.append(given_lyrs)
                         self.utils.save_a_variable('lyr_configs', lyr_configs)
                         self.utils.save_a_variable('syn_results', syn_results)
-        dnn_dse.copy_all_design_sourcefile()
+        self.copy_all_design_sourcefile()
         os.chdir(self.cfg.paths.design_top)
         return syn_results, lyr_configs, model_layers_name

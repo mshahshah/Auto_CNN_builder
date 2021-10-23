@@ -47,12 +47,12 @@ def copy_solution_files(cfg, sol, specifier=None):
     if specifier == None :  temp = ''
     else:          temp = '_' + str(specifier)
     sol_copy_name = os.path.join(cfg.paths.dse_json, 'design' + str(sol) + temp + '.json')
-    json_file = os.path.join(cfg.paths.design_model, 'hls' + str(sol), cfg.design_setting.solution_name,
+    json_file = os.path.join(cfg.paths.design_model, 'hls' + str(sol)+ temp, cfg.design_setting.solution_name,
                              '{}_data.json'.format(cfg.design_setting.solution_name))
-    if os.path.exists(json_file):
+    try:
         copyfile(json_file, sol_copy_name)
-    else:
-        print("PYTHON : Copy Solution Files : Solution file is not generated")
+    except:
+        print("PYTHON : Copy Solution Files : Couldn't copy json file")
 
 def collect_design_notes(cfg, additional_info, save_path=''):
     notes = []
@@ -515,9 +515,9 @@ class hls_tools():
             with open(file) as json_file:
                 json_data = json.load(json_file)
                 if self.cfg.design_setting.vivado_version == 2020:
-                    passed_sol = self.extract_hls_json_info_vitis(json_data)
+                    passed_sol = self.extract_hls_json_info_vitis(json_data, include_II=False)
                 else:
-                    passed_sol = self.extract_hls_json_info(json_data)
+                    passed_sol = self.extract_hls_json_info(json_data, include_II=False)
                 model_layers_name = passed_sol.keys()
                 passed_sol['solution'] = solution_num
                 passed_sol['syn_status'] = 'passed'
@@ -542,9 +542,9 @@ class hls_tools():
                 json_data = json.load(json_file)
                 json_file.close()
                 if self.cfg.design_setting.vivado_version == 2020:
-                    passed_sol = self.extract_hls_json_info_vitis(json_data)
+                    passed_sol = self.extract_hls_json_info_vitis(json_data, include_II=False)
                 else:
-                    passed_sol = self.extract_hls_json_info(json_data)
+                    passed_sol = self.extract_hls_json_info(json_data, include_II=False)
                 model_layers_name = list(passed_sol.keys())
                 passed_sol['solution'] = solution_num
                 passed_sol['syn_status'] = 'passed'
@@ -563,7 +563,7 @@ class hls_tools():
             passed_sol['syn_time'] = '{:3d}:{:2d}'.format(syn_exec_time[0], syn_exec_time[1])
         return passed_sol, model_layers_name
 
-    def extract_hls_json_info(self, json_data):
+    def extract_hls_json_info(self, json_data, include_II=False):
         syn_rslt_summary = {}
         keys = ['Area', 'Latency']
         temp = json_data["ModuleInfo"]["Metrics"]
@@ -602,12 +602,12 @@ class hls_tools():
                     syn_rslt_summary[p_id]['OP'] = total_OP
                     syn_rslt_summary[p_id]['GOPS'] = round(total_OP / (exec_us * pow(10, 3)), 3)
 
-                elif key == "Loops" and key in keys:
+                elif include_II and key == "Loops" and key in keys:
                     for II in temp[p_id][key]:
                         syn_rslt_summary[p_id]['II {}'.format(II["Name"])] = II["PipelineII"]
         return syn_rslt_summary
 
-    def extract_hls_json_info_vitis(self, json_data):
+    def extract_hls_json_info_vitis(self, json_data, include_II=False):
         syn_rslt_summary = {}
         keys = ['Area', 'Latency', 'Loops']
         temp = json_data["ModuleInfo"]["Metrics"]
@@ -655,7 +655,7 @@ class hls_tools():
                     syn_rslt_summary[p_id]['OP'] = OPs
                     syn_rslt_summary[p_id]['GOPS'] = round(OPs / (exec_us * pow(10, 3)), 3) if exec_us != 0 else 'NA'
 
-                elif key == "Loops" and key in keys:
+                elif include_II and key == "Loops" and key in keys:
                     for II in new_temp[p_id][key]:
                         syn_rslt_summary[p_id]['II {}'.format(II["Name"])] = II["PipelineII"]
                         syn_rslt_summary[p_id]['Dep {}'.format(II["Name"])] = II["PipelineDepth"]
