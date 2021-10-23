@@ -15,6 +15,10 @@ else
     rm -rf $dir/integration
     rm -f $dir/*.log
     rm -f $dir/*.txt
+    rm -f $dir/*.cpp
+    rm -f $dir/*.h
+    rm -f $dir/*.tcl
+    rm -rf $dir/sol*
 
     echo $dir" files are cleaned"
 fi
