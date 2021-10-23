@@ -48,14 +48,14 @@ trainer:
 design_layers:
 -
     type         : IN
-    w_out        : 224
+    w_out        : 78
     lyr_out      : 1
     padding      : 0
     data_type    : 16    #a number or auto
 
 -
     type         : CONV
-    w_ker        : 11
+    w_ker        : 5
     stride       : 4
     lyr_out      : 48
     padding      : 0
@@ -66,8 +66,8 @@ design_layers:
     
 -
     type         : POOL
-    w_ker        : 3
-    stride       : 3
+    w_ker        : 2
+    stride       : 2
     pooling      : max
     data_type    : 16   #a number or auto
     batch_in     : 1
@@ -229,7 +229,7 @@ pragmas:
 
 
             - label:   Lcol
-              type:    var
+              type:    skip
               pragma:  pipeline
               options:
 
@@ -240,7 +240,7 @@ pragmas:
 
 
             - label:   LlyrI    # should be fixed
-              type:    skip
+              type:    var
               pragma:  pipeline
               options:
 
@@ -315,7 +315,7 @@ pragmas:
         array:
         function:
             - label:   ''
-              type:    fix
+              type:    skip
               pragma:  inline
               options:
                 - 'off'
@@ -379,19 +379,19 @@ pragmas:
                - type cyclic -factor 2 -dim 1
 # ----------------------------------------------------------------------
             - label:    L1_ker
-              type:     var
+              type:     skip
               pragma:   partition
               options:
                - type complete -dim 0
 
             - label:    L3_ker
-              type:     fix
+              type:     skip
               pragma:   partition
               options:
                - type complete -dim 0
 
             - label:    L5_ker
-              type:     var
+              type:     skip
               pragma:   reshape
               options:
                - type cyclic  -factor 4 -dim 0
@@ -406,7 +406,7 @@ pragmas:
 
 
             - label:    L7_ker
-              type:     fix
+              type:     var
               pragma:   reshape
               options:
                - type cyclic  -factor 4 -dim 0
@@ -419,43 +419,43 @@ pragmas:
 
 
             - label:    L1_out
-              type:     fix
+              type:     skip
               pragma:   partition
               options:
                - type cyclic  -factor 6 -dim 1
 
             - label:    L2_out
-              type:     fix
+              type:     skip
               pragma:   partition
               options:
                - type cyclic  -factor 6 -dim 1
 
             - label:    L3_out
-              type:     fix
+              type:     skip
               pragma:   partition
               options:
                 - type cyclic  -factor 6 -dim 1
 
             - label:    L4_out
-              type:     fix
+              type:     skip
               pragma:   partition
               options:
                 - type cyclic  -factor 6 -dim 1
 
             - label:    L5_out
-              type:     fix
+              type:     skip
               pragma:   reshape
               options:
                - type cyclic  -factor 4 -dim 0
 
             - label:    L6_out
-              type:     fix
+              type:     var
               pragma:   reshape
               options:
                - type cyclic  -factor 4 -dim 0
 
             - label:    L7_out
-              type:     fix
+              type:     var
               pragma:   reshape
               options:
                - type cyclic  -factor 4 -dim 0
