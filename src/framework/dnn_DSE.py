@@ -43,6 +43,8 @@ lyr_map2syn = {
     'LeNet':'dnn_LeNet',
     'C1P1F1':'dnn_C1P1F1',
     'C2P2F1':'dnn_C2P2F1',
+    'C3P2F1':'dnn_C3P2F1',
+    'C3P2F2':'dnn_C3P2F2',
     'AlexNet':'dnn_AlexNet',
     'ConvNet':'dnn_ConvNet',
     'IN':'read_input3D',
